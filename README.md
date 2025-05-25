@@ -34,32 +34,32 @@
 ### 安装步骤
 
 1. 克隆项目
-
-```bash
-git clone https://github.com/yourusername/deepseek-agent.git
-cd deepseek-agent
-```
+  
+   ```bash
+   git clone https://github.com/yourusername/deepseek-agent.git
+   cd deepseek-agent
+   ```
 
 2. 配置环境变量
 
-```bash
-cp .env.example .env
-```
+   ```bash
+   cp .env.example .env
+   ```
 
-编辑 `.env` 文件，填入你的 API 密钥：
+   编辑 `.env` 文件，填入你的 API 密钥：
 
-```shell
-DEEPSEEK_API_KEY=your_deepseek_api_key
-DEEPSEEK_API_URL=your_deepseek_api_endpoint
-AMAP_API_KEY=your_amap_api_key
-SERPER_API_KEY=your_serper_api_key
-```
+   ```shell
+   DEEPSEEK_API_KEY=your_deepseek_api_key
+   DEEPSEEK_API_URL=your_deepseek_api_endpoint
+   AMAP_API_KEY=your_amap_api_key
+   SERPER_API_KEY=your_serper_api_key
+   ```
 
 3. 运行项目
 
-```bash
-cargo run
-```
+   ```bash
+   cargo run
+   ```
 
 ## 📖 使用示例
 

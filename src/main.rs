@@ -6,7 +6,7 @@ use tracing::{Level, info};
 use tracing_subscriber;
 
 mod tools;
-use tools::{amap, serper};
+use tools::{get_tools_definition, handle_tool_call};
 
 async fn chat(user_query: &str) -> Result<(), Box<dyn std::error::Error>> {
   let api_key = env::var("DEEPSEEK_API_KEY").unwrap();
@@ -22,40 +22,7 @@ async fn chat(user_query: &str) -> Result<(), Box<dyn std::error::Error>> {
           },
           {"role": "user", "content": user_query}
       ],
-      "tools": [{
-          "type": "function",
-          "function": {
-              "name": "get_weather",
-              "description": "获取指定城市的天气预报信息",
-              "parameters": {
-                  "type": "object",
-                  "properties": {
-                      "location": {
-                          "type": "string",
-                          "description": "城市名称，例如：上海"
-                      }
-                  },
-                  "required": ["location"]
-              }
-          }
-      },
-      {
-          "type": "function",
-          "function": {
-              "name": "search",
-              "description": "使用Google搜索获取实时信息",
-              "parameters": {
-                  "type": "object",
-                  "properties": {
-                      "query": {
-                          "type": "string",
-                          "description": "搜索查询词"
-                      }
-                  },
-                  "required": ["query"]
-              }
-          }
-      }],
+      "tools": get_tools_definition(),
       "tool_choice": "auto",
   });
 
@@ -76,90 +43,33 @@ async fn chat(user_query: &str) -> Result<(), Box<dyn std::error::Error>> {
   // 处理工具调用
   if let Some(tool_calls) = response["choices"][0]["message"]["tool_calls"].as_array() {
     for call in tool_calls {
-      match call["function"]["name"].as_str() {
-        Some("get_weather") => {
-          // 解析参数
-          let args: Value = serde_json::from_str(call["function"]["arguments"].as_str().unwrap())?;
-          info!(
-            "工具调用参数: {}",
-            serde_json::to_string_pretty(&args).unwrap()
-          );
-          let location = args["location"].as_str().unwrap();
-          info!("被查询的城市: {}", location);
+      let tool_result = handle_tool_call(call).await?;
 
-          // 实际调用天气API
-          let amap_key = env::var("AMAP_API_KEY").unwrap();
-          let weather_info = amap::get_weather(location, &amap_key).await?;
-          info!(
-            "天气信息: {}",
-            serde_json::to_string_pretty(&weather_info).unwrap()
-          );
+      // 将结果反馈给大模型
+      let final_response = reqwest::Client::new()
+        .post(&endpoint)
+        .header("Authorization", format!("Bearer {}", api_key))
+        .json(&json!({
+            "model": env::var("MODEL_NAME").unwrap(),
+            "messages": [
+                {"role": "system", "content": tool_result.system_prompt},
+                {"role": "assistant", "content": null, "tool_calls": [call]},
+                {
+                    "role": "tool",
+                    "content": tool_result.content,
+                    "tool_call_id": call["id"]
+                }
+            ]
+        }))
+        .send()
+        .await?
+        .json::<Value>()
+        .await?;
 
-          // 将结果反馈给大模型
-          let final_response = reqwest::Client::new()
-            .post(&endpoint)
-            .header("Authorization", format!("Bearer {}", api_key))
-            .json(&json!({
-                "model": env::var("MODEL_NAME").unwrap(),
-                "messages": [
-                    {"role": "system", "content": "你是一个专业的天气顾问，请根据获取到的天气数据给出详细的穿衣建议。注意：\n1. 分析温度范围和温差\n2. 考虑天气现象（晴、阴、雨等）\n3. 考虑风力大小\n4. 给出具体的穿衣层次建议\n5. 如有必要，提醒是否需要携带雨具或防晒用品"},
-                    {"role": "assistant", "content": null, "tool_calls": [call]},
-                    {
-                        "role": "tool",
-                        "content": serde_json::to_string(&weather_info)?,
-                        "tool_call_id": call["id"]
-                    }
-                ]
-            }))
-            .send()
-            .await?
-            .json::<Value>()
-            .await?;
-
-          info!(
-            "最终回答: {}",
-            final_response["choices"][0]["message"]["content"]
-          );
-        }
-        Some("search") => {
-          // 解析参数
-          let args: Value = serde_json::from_str(call["function"]["arguments"].as_str().unwrap())?;
-          let query = args["query"].as_str().unwrap();
-          info!("搜索查询: {}", query);
-
-          // 调用搜索API
-          let search_results = serper::search(query).await?;
-          let formatted_results = serper::format_results(&search_results, 3); // 只取前3条结果
-          info!("搜索结果: {}", formatted_results);
-
-          // 将结果反馈给大模型
-          let final_response = reqwest::Client::new()
-            .post(&endpoint)
-            .header("Authorization", format!("Bearer {}", api_key))
-            .json(&json!({
-                "model": env::var("MODEL_NAME").unwrap(),
-                "messages": [
-                    {"role": "system", "content": "你是一个专业的信息分析师，请根据搜索结果给出准确、简洁的回答。"},
-                    {"role": "assistant", "content": null, "tool_calls": [call]},
-                    {
-                        "role": "tool",
-                        "content": formatted_results,
-                        "tool_call_id": call["id"]
-                    }
-                ]
-            }))
-            .send()
-            .await?
-            .json::<Value>()
-            .await?;
-
-          info!(
-            "最终回答: {}",
-            final_response["choices"][0]["message"]["content"]
-          );
-        }
-        _ => {}
-      }
+      info!(
+        "最终回答: {}",
+        final_response["choices"][0]["message"]["content"]
+      );
     }
   }
 
