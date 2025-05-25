@@ -64,7 +64,6 @@ sequenceDiagram
     App->>User: 返回完整回答
 ```
 
-![大模型工具调用基础原理](./images/llm-func-tools.png)
 
 ### 详细步骤分析
 

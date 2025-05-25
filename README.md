@@ -121,6 +121,11 @@ src/
 
 欢迎提交 Issue 和 Pull Request！
 
+## 链接
+
+- [大模型工具调用指南](https://yuxuetr.com/blog/2025/05/25/llm-func-tools)
+
 ## 📄 许可证
 
 MIT License
+
