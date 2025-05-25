@@ -36,8 +36,8 @@
 1. 克隆项目
   
    ```bash
-   git clone https://github.com/yourusername/deepseek-agent.git
-   cd deepseek-agent
+   git clone https://github.com/yuxuetr/deepseek_agent.git
+   cd deepseek_agent
    ```
 
 2. 配置环境变量
