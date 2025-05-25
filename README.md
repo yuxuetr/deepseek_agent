@@ -1,4 +1,4 @@
-# DeepSeek Agent Demo
+# DeepSeek Agents
 
 这是一个基于 Rust 语言开发的智能助手演示项目，展示了如何使用 DeepSeek 大语言模型构建 AI Agent，并结合外部工具实现检索增强生成（RAG）功能。
 
