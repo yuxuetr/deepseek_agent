@@ -69,6 +69,7 @@ pub async fn search(query: &str) -> Result<Vec<SearchResult>, reqwest::Error> {
 }
 
 // 将搜索结果格式化为易读的字符串
+#[allow(dead_code)]
 pub fn format_results(results: &[SearchResult], max_results: usize) -> String {
   let results = results
     .iter()

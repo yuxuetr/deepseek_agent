@@ -49,6 +49,7 @@ pub struct Cast {
   pub nighttemp_float: String,
 }
 
+#[allow(dead_code)]
 pub async fn get_weather(location: &str, api_key: &str) -> Result<WeatherResponse, reqwest::Error> {
   // 第一步：获取行政编码
   let district_url = format!(

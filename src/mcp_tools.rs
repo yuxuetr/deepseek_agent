@@ -36,12 +36,14 @@ pub struct McpPromptArgument {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct McpToolResult {
   pub content: String,
   pub system_prompt: Option<String>,
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct DeepSeekMcpTools {
   amap_key: String,
   serper_key: String,
@@ -51,6 +53,7 @@ pub struct DeepSeekMcpTools {
 }
 
 impl DeepSeekMcpTools {
+  #[allow(dead_code)]
   pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
     let amap_key = env::var("AMAP_API_KEY")?;
     let serper_key = env::var("SERPER_API_KEY")?;
@@ -136,21 +139,25 @@ impl DeepSeekMcpTools {
   }
 
   // MCP-style tool listing
+  #[allow(dead_code)]
   pub fn list_tools(&self) -> &[McpTool] {
     &self.tools
   }
 
   // MCP-style resource listing  
+  #[allow(dead_code)]
   pub fn list_resources(&self) -> &[McpResource] {
     &self.resources
   }
 
   // MCP-style prompt listing
+  #[allow(dead_code)]
   pub fn list_prompts(&self) -> &[McpPrompt] {
     &self.prompts
   }
 
   // MCP-style tool execution
+  #[allow(dead_code)]
   pub async fn call_tool(&self, name: &str, arguments: &Value) -> Result<McpToolResult, Box<dyn std::error::Error>> {
     info!("MCP Tool Call: {} with args: {}", name, arguments);
     
@@ -248,6 +255,7 @@ impl DeepSeekMcpTools {
   }
 
   // Convert to MCP-style tool definitions for LLM API
+  #[allow(dead_code)]
   pub fn get_mcp_tools_definition(&self) -> Value {
     json!(self.tools.iter().map(|tool| {
       json!({

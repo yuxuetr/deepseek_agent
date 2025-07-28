@@ -7,20 +7,25 @@ use tracing_subscriber;
 
 mod tools;
 mod mcp_tools;
+mod mcp_client;
 
-use mcp_tools::DeepSeekMcpTools;
+use mcp_client::McpClient;
 
-async fn chat_with_mcp(user_query: &str) -> Result<(), Box<dyn std::error::Error>> {
+async fn chat_with_mcp_server(user_query: &str) -> Result<(), Box<dyn std::error::Error>> {
   let api_key = env::var("DEEPSEEK_API_KEY").unwrap();
   let endpoint = env::var("DEEPSEEK_API_URL").unwrap().to_string();
 
-  // Initialize MCP-compatible tools
-  let mcp_tools = DeepSeekMcpTools::new()?;
-  info!("MCP Tools initialized: {} tools, {} resources, {} prompts", 
-    mcp_tools.list_tools().len(),
-    mcp_tools.list_resources().len(), 
-    mcp_tools.list_prompts().len()
-  );
+  // Initialize MCP Client and connect to server
+  let mut mcp_client = McpClient::new("mcp_server").await?;
+  info!("MCP Client: Connected to MCP server");
+
+  // Initialize MCP connection
+  let _server_info = mcp_client.initialize().await?;
+  info!("MCP Client: Server initialized successfully");
+
+  // Get available tools from MCP server
+  let tools = mcp_client.list_tools().await?;
+  info!("MCP Client: Available tools: {}", tools.len());
 
   // 构建请求体
   let body = json!({
@@ -32,7 +37,16 @@ async fn chat_with_mcp(user_query: &str) -> Result<(), Box<dyn std::error::Error
           },
           {"role": "user", "content": user_query}
       ],
-      "tools": mcp_tools.get_mcp_tools_definition(),
+      "tools": tools.iter().map(|tool| {
+        json!({
+          "type": "function",
+          "function": {
+            "name": tool["name"],
+            "description": tool["description"],
+            "parameters": tool["inputSchema"]
+          }
+        })
+      }).collect::<Vec<_>>(),
       "tool_choice": "auto",
   });
 
@@ -56,13 +70,12 @@ async fn chat_with_mcp(user_query: &str) -> Result<(), Box<dyn std::error::Error
       let tool_name = call["function"]["name"].as_str().unwrap();
       let arguments: Value = serde_json::from_str(call["function"]["arguments"].as_str().unwrap())?;
       
-      // Use MCP tool execution
-      let tool_result = mcp_tools.call_tool(tool_name, &arguments).await?;
+      // Use MCP server tool execution
+      let tool_result = mcp_client.call_tool(tool_name, arguments).await?;
 
-      // 将结果反馈给大模型
-      let system_prompt = tool_result.system_prompt.unwrap_or_else(|| 
-        "请根据工具返回的结果给出准确、有帮助的回答。".to_string()
-      );
+      // Extract result from MCP response
+      let content = tool_result["content"][0]["text"].as_str().unwrap_or("No content");
+      let system_prompt = "请根据工具返回的结果给出准确、有帮助的回答。".to_string();
 
       let final_response = reqwest::Client::new()
         .post(&endpoint)
@@ -74,7 +87,7 @@ async fn chat_with_mcp(user_query: &str) -> Result<(), Box<dyn std::error::Error
                 {"role": "assistant", "content": null, "tool_calls": [call]},
                 {
                     "role": "tool",
-                    "content": tool_result.content,
+                    "content": content,
                     "tool_call_id": call["id"]
                 }
             ]
@@ -102,10 +115,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   dotenv().ok();
   info!("环境变量加载完成");
 
-  // 测试MCP搜索工具
+  // 测试MCP服务器搜索工具
   let search_query = "什么是MCP协议";
-  info!("MCP搜索查询: {}", search_query);
-  chat_with_mcp(search_query).await?;
+  info!("MCP Server搜索查询: {}", search_query);
+  chat_with_mcp_server(search_query).await?;
 
   Ok(())
 }
