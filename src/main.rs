@@ -6,11 +6,21 @@ use tracing::{Level, info};
 use tracing_subscriber;
 
 mod tools;
-use tools::{get_tools_definition, handle_tool_call};
+mod mcp_tools;
 
-async fn chat(user_query: &str) -> Result<(), Box<dyn std::error::Error>> {
+use mcp_tools::DeepSeekMcpTools;
+
+async fn chat_with_mcp(user_query: &str) -> Result<(), Box<dyn std::error::Error>> {
   let api_key = env::var("DEEPSEEK_API_KEY").unwrap();
   let endpoint = env::var("DEEPSEEK_API_URL").unwrap().to_string();
+
+  // Initialize MCP-compatible tools
+  let mcp_tools = DeepSeekMcpTools::new()?;
+  info!("MCP Tools initialized: {} tools, {} resources, {} prompts", 
+    mcp_tools.list_tools().len(),
+    mcp_tools.list_resources().len(), 
+    mcp_tools.list_prompts().len()
+  );
 
   // 构建请求体
   let body = json!({
@@ -18,11 +28,11 @@ async fn chat(user_query: &str) -> Result<(), Box<dyn std::error::Error>> {
       "messages": [
           {
               "role": "system",
-              "content": "你是一个专业的助手，可以：\n1. 提供天气信息和穿衣建议\n2. 搜索互联网获取实时信息\n请根据用户的问题，选择合适的工具来提供帮助。"
+              "content": "你是一个专业的助手，可以：\n1. 提供天气信息和穿衣建议\n2. 搜索互联网获取实时信息\n请根据用户的问题，选择合适的工具来提供帮助。\n\n这是一个基于Model Context Protocol (MCP)的工具系统。"
           },
           {"role": "user", "content": user_query}
       ],
-      "tools": get_tools_definition(),
+      "tools": mcp_tools.get_mcp_tools_definition(),
       "tool_choice": "auto",
   });
 
@@ -36,23 +46,31 @@ async fn chat(user_query: &str) -> Result<(), Box<dyn std::error::Error>> {
     .json::<Value>()
     .await?;
   info!(
-    "LLM工具的响应结果: {}",
+    "MCP LLM响应结果: {}",
     serde_json::to_string_pretty(&response).unwrap()
   );
 
-  // 处理工具调用
+  // 处理MCP工具调用
   if let Some(tool_calls) = response["choices"][0]["message"]["tool_calls"].as_array() {
     for call in tool_calls {
-      let tool_result = handle_tool_call(call).await?;
+      let tool_name = call["function"]["name"].as_str().unwrap();
+      let arguments: Value = serde_json::from_str(call["function"]["arguments"].as_str().unwrap())?;
+      
+      // Use MCP tool execution
+      let tool_result = mcp_tools.call_tool(tool_name, &arguments).await?;
 
       // 将结果反馈给大模型
+      let system_prompt = tool_result.system_prompt.unwrap_or_else(|| 
+        "请根据工具返回的结果给出准确、有帮助的回答。".to_string()
+      );
+
       let final_response = reqwest::Client::new()
         .post(&endpoint)
         .header("Authorization", format!("Bearer {}", api_key))
         .json(&json!({
             "model": env::var("MODEL_NAME").unwrap(),
             "messages": [
-                {"role": "system", "content": tool_result.system_prompt},
+                {"role": "system", "content": system_prompt},
                 {"role": "assistant", "content": null, "tool_calls": [call]},
                 {
                     "role": "tool",
@@ -67,7 +85,7 @@ async fn chat(user_query: &str) -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
       info!(
-        "最终回答: {}",
+        "MCP最终回答: {}",
         final_response["choices"][0]["message"]["content"]
       );
     }
@@ -84,10 +102,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   dotenv().ok();
   info!("环境变量加载完成");
 
-  // 测试查询
-  let user_query = "2025年2月的编程语言排行榜是什么";
-  info!("用户查询: {}", user_query);
-  chat(user_query).await?;
+  // 测试MCP搜索工具
+  let search_query = "什么是MCP协议";
+  info!("MCP搜索查询: {}", search_query);
+  chat_with_mcp(search_query).await?;
 
   Ok(())
 }

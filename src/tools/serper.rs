@@ -31,9 +31,7 @@ pub struct OrganicResult {
   pub position: i32,
 }
 
-pub async fn search(query: &str) -> Result<Vec<SearchResult>, reqwest::Error> {
-  dotenv::dotenv().ok();
-  let api_key = env::var("SERPER_API_KEY").expect("SERPER_API_KEY must be set");
+pub async fn search_with_key(query: &str, api_key: &str) -> Result<Vec<SearchResult>, reqwest::Error> {
   let client = reqwest::Client::new();
 
   let response = client
@@ -60,6 +58,14 @@ pub async fn search(query: &str) -> Result<Vec<SearchResult>, reqwest::Error> {
     .collect();
 
   Ok(results)
+}
+
+// Backward compatibility function
+#[allow(dead_code)]
+pub async fn search(query: &str) -> Result<Vec<SearchResult>, reqwest::Error> {
+  dotenv::dotenv().ok();
+  let api_key = env::var("SERPER_API_KEY").expect("SERPER_API_KEY must be set");
+  search_with_key(query, &api_key).await
 }
 
 // 将搜索结果格式化为易读的字符串
