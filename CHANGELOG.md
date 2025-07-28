@@ -3,16 +3,22 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 ---
-
 ## [unreleased]
 
 ### Bug Fixes
 
 - replace image and modified README.md - ([01b87a3](https://github.com/yuxuetr/rcli/commit/01b87a3020b7ed53242faace7661de7aa258ba5b)) - yuxuetr
+- fixed doc bug - ([1e01015](https://github.com/yuxuetr/rcli/commit/1e01015d097c768f84afc4cd04cb693630d1f237)) - yuxuetr
 
 ### Documentation
 
 - add llm function tool calling doc - ([93494b0](https://github.com/yuxuetr/rcli/commit/93494b046ae41c2f97327f6711d22eb0a8a47741)) - yuxuetr
+- add changelog - ([62fd06e](https://github.com/yuxuetr/rcli/commit/62fd06ef232b1db8d624f5604bc02de544b839c9)) - yuxuetr
+
+### Features
+
+- migrate tools to MCP-compatible architecture - ([53dcf42](https://github.com/yuxuetr/rcli/commit/53dcf427af70a22b77cad3a8018d6ea83b400b88)) - yuxuetr
+- update to v0.4.0 with comprehensive MCP documentation and code cleanup - ([b70668b](https://github.com/yuxuetr/rcli/commit/b70668b35c7debb94d3831977635c5591c940c6b)) - yuxuetr
 
 ### Other
 
